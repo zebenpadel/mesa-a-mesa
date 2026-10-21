@@ -1,0 +1,815 @@
+<!doctype html>
+<html lang="es">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover">
+<title>Mesa a Mesa</title>
+<meta name="theme-color" content="#7CC6F1">
+<meta name="description" content="Torneos de cartas para tiendas: emparejamientos, resultados desde el móvil de cada jugador y clasificación.">
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Atkinson+Hyperlegible:wght@400;700&family=Luckiest+Guy&family=JetBrains+Mono:wght@500;700&display=swap">
+<script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2.45.4/dist/umd/supabase.js"></script>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/qrcodejs/1.0.0/qrcode.min.js"></script>
+<style>
+:root{
+  --bg:#FFFFFF; --surface:#FFFFFF; --ink:#14202B; --muted:#5B6A78; --line:#D3DAE1;
+  --accent:#F2B705; --accent-ink:#14202B; --win:#1E7A55; --win-bg:#DDF1E7; --soft:#F1F4F7;
+  --blue:#2C5FB8; --bad:#A4262C; --bad-bg:#FDECEC; --wait:#8A5A00; --wait-bg:#FFF4D6;
+  --display:"Luckiest Guy","Arial Black",system-ui,sans-serif;
+  --body:"Atkinson Hyperlegible",system-ui,-apple-system,sans-serif;
+  --mono:"JetBrains Mono",ui-monospace,Menlo,monospace;
+  color-scheme:light;
+}
+*{box-sizing:border-box}
+[hidden]{display:none!important}
+html,body{margin:0}
+body{background:repeating-conic-gradient(from 0deg at 50% -8%,#7CC6F1 0deg 7deg,#A4DAF8 7deg 14deg) fixed,#A4DAF8;color:var(--ink);font-family:var(--body);font-size:16px;line-height:1.45;min-height:100vh;padding-top:env(safe-area-inset-top,0px);padding-bottom:env(safe-area-inset-bottom,0px)}
+body::after{content:"";position:fixed;left:0;right:0;bottom:0;height:96px;pointer-events:none;z-index:0;background:radial-gradient(140px 60px at 12% 100%,#6CC556 97%,transparent),radial-gradient(200px 80px at 52% 100%,#58B545 97%,transparent),radial-gradient(160px 64px at 92% 100%,#6CC556 97%,transparent),linear-gradient(transparent 62%,#4EA83C 62%)}
+.wrap{position:relative;z-index:1;max-width:560px;margin:0 auto;padding-block:18px 120px;padding-left:max(16px,env(safe-area-inset-left,0px));padding-right:max(16px,env(safe-area-inset-right,0px));display:flex;flex-direction:column;gap:16px}
+button{font:inherit;cursor:pointer;color:inherit}
+button:focus-visible,input:focus-visible,select:focus-visible{outline:3px solid var(--accent);outline-offset:2px}
+button:disabled{cursor:not-allowed}
+.brand{display:flex;align-items:center;justify-content:space-between;gap:10px;flex-wrap:wrap}
+.bbtns{display:flex;gap:6px;flex-wrap:wrap}
+.logo{font-family:var(--display);font-weight:400;font-size:22px;letter-spacing:.04em;color:var(--accent);-webkit-text-stroke:5px var(--blue);paint-order:stroke fill;text-transform:uppercase;display:flex;align-items:center;gap:8px;background:none;border:0;padding:0}
+.logo i{display:inline-block;width:18px;height:24px;border-radius:3px;background:var(--accent);transform:rotate(-8deg);box-shadow:5px 1px 0 -1px var(--ink);-webkit-text-stroke:0}
+.logo.big{font-size:clamp(34px,10vw,48px);-webkit-text-stroke:8px var(--blue);gap:12px}
+.logo.big i{width:30px;height:40px;border-radius:5px;box-shadow:7px 2px 0 -1px var(--ink)}
+.hero{display:flex;flex-direction:column;align-items:center;gap:10px;padding-block:24px 4px;text-align:center}
+.pill{margin:0;font-weight:700;background:rgba(255,255,255,.9);border-radius:99px;padding:6px 14px;font-size:14px}
+.ghost{background:var(--surface);border:1px solid var(--line);border-radius:999px;padding:7px 14px;font-size:14px;font-weight:700}
+.primary{background:var(--accent);color:var(--accent-ink);border:0;border-radius:10px;padding:13px 18px;font-weight:700;font-size:16px}
+.primary:disabled,.dangerbtn:disabled{opacity:.45}
+.blue{background:var(--blue);color:#fff;border:0;border-radius:10px;padding:13px 18px;font-weight:700;font-size:16px}
+.dark{background:var(--ink);color:#fff;border:0;border-radius:10px;padding:13px 18px;font-weight:700}
+.dark:disabled{opacity:.4}
+.dangerbtn{background:var(--bad);color:#fff;border:0;border-radius:10px;padding:13px 18px;font-weight:700}
+.link{background:none;border:0;color:var(--blue);font-weight:700;text-decoration:underline;padding:2px 0;font-size:inherit;text-align:inherit}
+.mini{background:none;border:0;color:var(--muted);font-size:14px;font-weight:700;padding:6px}
+.card{background:var(--surface);border:1px solid var(--line);border-radius:12px}
+.form{padding:14px;display:flex;flex-direction:column;gap:10px}
+.form label{font-size:13px;font-weight:700;color:var(--muted);display:flex;flex-direction:column;gap:6px}
+.form label.chk{flex-direction:row;align-items:flex-start;gap:10px;font-weight:400;color:var(--ink);font-size:14px}
+.chk input{width:20px;height:20px;flex:none;margin:1px 0 0;accent-color:var(--blue)}
+.row{display:flex;gap:8px}
+.row>label{flex:1;min-width:0}
+input[type=text],input[type=date],input[type=tel],input[type=password]{width:100%;min-width:0;font:inherit;background:var(--surface);color:var(--ink);border:1px solid var(--line);border-radius:10px;padding:12px}
+.row>input{flex:1}
+.err{margin:0;background:var(--bad-bg);color:var(--bad);border-radius:8px;padding:9px 12px;font-size:14px;font-weight:700}
+.note{font-size:14px;color:var(--ink);margin:0}
+.sec{display:flex;flex-direction:column;gap:12px}
+.sec>.note,.panelnote{background:rgba(255,255,255,.88);border-radius:10px;padding:10px 12px}
+.authh{font-family:var(--display);font-weight:400;font-size:24px;letter-spacing:.03em;color:var(--blue);margin:0}
+.sectitle{display:flex;justify-content:space-between;align-items:baseline;gap:10px;flex-wrap:wrap}
+.sectitle h2{font-family:var(--display);font-weight:400;font-size:26px;letter-spacing:.03em;color:var(--accent);-webkit-text-stroke:5px var(--blue);paint-order:stroke fill;margin:0}
+.sectitle span{font-size:14px;font-weight:700}
+.seg{display:grid;grid-template-columns:1fr 1fr;gap:4px;background:var(--soft);border-radius:10px;padding:4px;margin:14px 14px 0}
+.seg button{border:0;background:none;border-radius:8px;padding:9px;font-weight:700;color:var(--muted)}
+.seg button.on{background:var(--surface);color:var(--ink);box-shadow:0 1px 3px rgba(0,0,0,.12)}
+.codebox{font-family:var(--mono);font-size:clamp(20px,6.5vw,26px);font-weight:700;letter-spacing:.06em;text-align:center;background:var(--soft);border:2px dashed var(--blue);border-radius:10px;padding:14px 8px;user-select:all;overflow-wrap:anywhere}
+.head{background:var(--ink);color:#fff;border-radius:14px;padding:18px;display:flex;flex-direction:column;gap:10px}
+.head h1{font-family:var(--display);font-weight:400;font-size:clamp(28px,8.5vw,40px);line-height:1.1;letter-spacing:.02em;margin:0;text-wrap:balance;color:var(--accent);-webkit-text-stroke:6px var(--blue);paint-order:stroke fill;text-shadow:3px 4px 0 rgba(0,0,0,.35);overflow-wrap:anywhere}
+.meta{display:flex;flex-wrap:wrap;gap:6px 14px;font-size:14px;opacity:.85}
+.chips{display:flex;gap:6px;flex-wrap:wrap;align-items:center}
+.chip{font-family:var(--mono);font-size:12px;font-weight:700;letter-spacing:.06em;text-transform:uppercase;background:var(--accent);color:var(--accent-ink);border-radius:4px;padding:3px 8px}
+.chip.live{background:#5FE0A0}
+.chip.done{background:#C9D3DC}
+.tabs{display:grid;grid-template-columns:repeat(3,1fr);background:rgba(255,255,255,.6);border-radius:12px;padding:4px;gap:4px}
+.tabs.two{grid-template-columns:1fr 1fr}
+.tabs button{border:0;background:none;border-radius:9px;padding:10px 4px;font-weight:700;font-size:15px}
+.tabs button[aria-selected="true"]{background:var(--surface);box-shadow:0 1px 3px rgba(0,0,0,.12)}
+.plist{list-style:none;margin:0;padding:0}
+.plist li{display:flex;align-items:center;gap:10px;padding:12px 14px;border-top:1px solid var(--line)}
+.plist li:first-child{border-top:0}
+.plist .n{font-family:var(--mono);font-size:13px;color:var(--muted);width:22px;flex:none}
+.plist .nm{flex:1;min-width:0;overflow-wrap:anywhere}
+.plist li.out .nm{text-decoration:line-through;color:var(--muted)}
+.tag{font-size:12px;font-weight:700;border-radius:99px;padding:2px 8px;background:var(--win-bg);color:var(--win);white-space:nowrap}
+.tlist{display:flex;flex-direction:column;gap:10px}
+.tcard{display:flex;justify-content:space-between;align-items:center;gap:10px;padding:14px;text-align:left;width:100%}
+.tcard b{display:block;font-size:17px;overflow-wrap:anywhere}
+.tcard span{font-size:13px;color:var(--muted)}
+.empty{padding:22px 16px;text-align:center}
+.empty b{display:block;margin-bottom:4px}
+.slip{background:var(--surface);border:1px solid var(--line);border-radius:12px;overflow:hidden}
+.slip header{display:flex;justify-content:space-between;align-items:center;gap:8px;padding:9px 14px 7px;background:var(--soft);font-family:var(--display);font-size:15px;letter-spacing:.05em;color:var(--muted)}
+.slip header b{font-weight:400;font-size:19px;color:var(--blue)}
+.slip header .ok{color:var(--win)}
+.slip header .wait{color:var(--wait)}
+.slip header .bad{color:var(--bad)}
+.pick{display:grid;grid-template-columns:1fr auto 1fr;gap:6px;padding:10px}
+.pick button{border:1.5px solid var(--line);background:var(--surface);border-radius:9px;padding:12px 8px;font-weight:700;min-width:0;overflow-wrap:anywhere;line-height:1.2}
+.pick button small{display:block;font-weight:400;font-size:12px;color:var(--muted);margin-top:3px;font-family:var(--mono)}
+.pick .draw{font-size:13px;color:var(--muted);padding:12px 10px}
+.pick button.on{border-color:var(--win);background:var(--win-bg);color:var(--win)}
+.pick button.on small{color:var(--win)}
+.pick button.lose{opacity:.45}
+.reps{margin:0 10px 10px;padding:9px 12px;border-radius:8px;font-size:14px;display:flex;flex-direction:column;gap:6px}
+.reps.wait{background:var(--wait-bg);color:var(--wait)}
+.reps.bad{background:var(--bad-bg);color:var(--bad)}
+.reps.ok{background:var(--win-bg);color:var(--win)}
+.reps button{align-self:flex-start;background:var(--win);color:#fff;border:0;border-radius:8px;padding:7px 12px;font-weight:700;font-size:14px}
+.bye{padding:14px;display:flex;justify-content:space-between;gap:10px;align-items:center}
+.bye span{font-size:13px;color:var(--muted)}
+.progress{height:6px;background:rgba(255,255,255,.7);border-radius:99px;overflow:hidden}
+.progress i{display:block;height:100%;background:var(--accent);transition:width .3s}
+.rnav{display:flex;gap:6px;flex-wrap:wrap}
+.rnav button{border:1px solid var(--line);background:var(--surface);border-radius:8px;padding:6px 12px;font-family:var(--mono);font-size:13px;font-weight:700}
+.rnav button.on{background:var(--ink);color:#fff;border-color:var(--ink)}
+.tblwrap{overflow-x:auto}
+table{width:100%;border-collapse:collapse;font-variant-numeric:tabular-nums}
+th{font-family:var(--mono);font-size:11px;letter-spacing:.06em;text-transform:uppercase;color:var(--muted);text-align:left;padding:10px;border-bottom:1px solid var(--line)}
+td{padding:12px 10px;border-bottom:1px solid var(--line)}
+tr:last-child td{border-bottom:0}
+td.num,th.num{text-align:right;font-family:var(--mono)}
+td.pos{font-family:var(--display);font-size:18px;width:36px}
+tr.top td.pos span{background:var(--accent);color:var(--accent-ink);border-radius:5px;padding:1px 7px}
+tr.me td{background:var(--win-bg)}
+td.pts{font-weight:700}
+.champ{padding:16px;display:flex;flex-direction:column;gap:4px}
+.champ strong{font-family:var(--display);font-weight:400;font-size:30px;color:var(--accent);-webkit-text-stroke:5px var(--blue);paint-order:stroke fill;overflow-wrap:anywhere}
+.acct dl{display:grid;grid-template-columns:auto 1fr;gap:6px 14px;margin:0;font-size:14px}
+.acct dt{color:var(--muted)}
+.acct dd{margin:0;font-weight:700;min-width:0;overflow-wrap:anywhere}
+.btngrid{display:grid;grid-template-columns:1fr 1fr;gap:8px}
+.btngrid button{border:1px solid var(--line);background:var(--surface);border-radius:10px;padding:11px 8px;font-weight:700;font-size:14px;line-height:1.2}
+.btngrid .danger{color:var(--bad);border-color:#E9B8BA}
+.linkbox{padding:16px;display:flex;flex-direction:column;gap:12px;align-items:stretch}
+.qr{align-self:center;background:#fff;padding:12px;border-radius:10px;border:1px solid var(--line);line-height:0}
+.qr img,.qr canvas{width:220px;height:220px;max-width:100%}
+.urlbox{font-family:var(--mono);font-size:13px;background:var(--soft);border-radius:8px;padding:10px;overflow-wrap:anywhere;user-select:all}
+/* jugador */
+.mybox{padding:16px;display:flex;flex-direction:column;gap:12px}
+.vs{display:grid;grid-template-columns:1fr auto 1fr;gap:8px;align-items:center;text-align:center}
+.vs b{font-size:18px;overflow-wrap:anywhere}
+.vs span{font-family:var(--display);font-size:20px;color:var(--muted)}
+.tableno{font-family:var(--display);font-size:42px;line-height:1;color:var(--accent);-webkit-text-stroke:6px var(--blue);paint-order:stroke fill;text-align:center}
+.bigbtns{display:grid;grid-template-columns:1fr 1fr 1fr;gap:8px}
+.bigbtns button{border:2px solid var(--line);background:var(--surface);border-radius:12px;padding:16px 6px;font-weight:700;font-size:15px}
+.bigbtns button.on{border-color:var(--win);background:var(--win-bg);color:var(--win)}
+.state{border-radius:10px;padding:12px;font-weight:700;font-size:15px;text-align:center}
+.state.ok{background:var(--win-bg);color:var(--win)}
+.state.wait{background:var(--wait-bg);color:var(--wait)}
+.state.bad{background:var(--bad-bg);color:var(--bad)}
+.who{display:grid;grid-template-columns:1fr 1fr;gap:8px}
+.who button{border:1.5px solid var(--line);background:var(--surface);border-radius:10px;padding:14px 8px;font-weight:700;overflow-wrap:anywhere}
+.who button:disabled{opacity:.45}
+.who button small{display:block;font-weight:400;font-size:12px;color:var(--muted)}
+/* legal */
+.legal{padding:18px;display:flex;flex-direction:column;gap:12px}
+.legal h3{font-size:17px;margin:6px 0 0;color:var(--blue)}
+.legal p,.legal li{font-size:15px;margin:0;max-width:65ch}
+.legal ul{margin:0;padding-left:20px;display:flex;flex-direction:column;gap:6px}
+.legal mark{background:#FFF1B8;color:var(--ink);border-radius:3px;padding:0 3px}
+.legal .ver{font-size:13px;color:var(--muted)}
+.quote{background:var(--soft);border-left:4px solid var(--accent);border-radius:6px;padding:10px 12px;font-size:15px}
+.ltabs{display:flex;gap:6px;overflow-x:auto;scrollbar-width:none;padding-bottom:2px}
+.ltabs button{flex:none;border:1px solid var(--line);background:var(--surface);border-radius:99px;padding:8px 14px;font-weight:700;font-size:14px}
+.ltabs button.on{background:var(--blue);color:#fff;border-color:var(--blue)}
+.legalfoot{display:flex;flex-wrap:wrap;justify-content:center;gap:4px 14px;background:rgba(255,255,255,.9);border-radius:12px;padding:8px 12px;font-size:13px}
+.toast{z-index:50;position:fixed;left:50%;bottom:calc(20px + env(safe-area-inset-bottom,0px));transform:translateX(-50%);background:var(--ink);color:#fff;padding:10px 16px;border-radius:14px;font-size:14px;font-weight:700;max-width:calc(100% - 32px);text-align:center}
+.loading{padding:28px;text-align:center;font-weight:700}
+@media (prefers-reduced-motion:reduce){.progress i{transition:none}}
+</style>
+</head>
+<body>
+<div class="wrap" id="root"><div class="card loading">Cargando…</div></div>
+<div class="toast" id="toast" role="status" hidden></div>
+
+<script>
+/* ======================= Configuración ======================= */
+const CFG={url:'https://bqlmonomgpolyixihulw.supabase.co',key:'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6ImJxbG1vbm9tZ3BvbHlpeGlodWx3Iiwicm9sZSI6ImFub24iLCJpYXQiOjE3OTI1ODc3MDMsImV4cCI6MjEwODE2MzcwM30.Fuzsg1dBYEeb--m7JM9y-jpblp16sAVWY5ltLjGq9B8'};
+const LEGAL_V='v2 · octubre 2026';
+const MAIL_DOMAIN='tiendas.mesaamesa.es';
+const TOKEN=(new URLSearchParams(location.search).get('t')||'').toLowerCase();
+const sb=(window.supabase&&/^https:\/\//.test(CFG.url))?window.supabase.createClient(CFG.url,CFG.key,{auth:{persistSession:true,autoRefreshToken:true}}):null;
+
+/* ======================= Utilidades ======================= */
+const $=s=>document.querySelector(s);
+const root=()=>$('#root');
+const esc=s=>String(s==null?'':s).replace(/[&<>"']/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]));
+const val=id=>{const e=document.getElementById(id);return e?e.value:''};
+function toast(t){const el=$('#toast');el.textContent=t;el.hidden=false;clearTimeout(toast.h);toast.h=setTimeout(()=>el.hidden=true,3200)}
+const store={get(k,d){try{const r=localStorage.getItem(k);return r==null?d:JSON.parse(r)}catch(e){return d}},
+  set(k,v){try{localStorage.setItem(k,JSON.stringify(v))}catch(e){}},del(k){try{localStorage.removeItem(k)}catch(e){}}};
+function rnd(n){try{return crypto.getRandomValues(new Uint8Array(n))}catch(e){return Uint8Array.from({length:n},()=>Math.floor(Math.random()*256))}}
+const hex=n=>Array.from(rnd(n),v=>v.toString(16).padStart(2,'0')).join('');
+const CH='ABCDEFGHJKLMNPQRSTUVWXYZ23456789';
+const newCode=()=>Array.from(rnd(12),v=>CH[v%CH.length]).join('');
+const fmtCode=c=>c.replace(/(.{4})(?=.)/g,'$1-');
+const cleanCode=c=>String(c).toUpperCase().replace(/[^A-Z0-9]/g,'');
+function normPhone(p){let d=String(p).replace(/\D/g,'');if(d.length===13&&d.startsWith('0034'))d=d.slice(4);if(d.length===11&&d.startsWith('34'))d=d.slice(2);return d}
+const okPhone=p=>/^[6789]\d{8}$/.test(p);
+const weakPin=p=>/^(\d)\1{3}$/.test(p)||['0123','1234','2345','3456','4567','5678','6789','9876','8765','7654','6543','5432','4321','3210'].includes(p);
+const mailOf=ph=>ph+'@'+MAIL_DOMAIN;
+const passOf=(ph,pin)=>'mam-'+pin+'-'+ph;
+const fdate=t=>new Date(t).toLocaleDateString('es-ES',{day:'numeric',month:'long',year:'numeric'});
+const fday=d=>d?new Date(d+'T12:00').toLocaleDateString('es-ES',{weekday:'long',day:'numeric',month:'long'}):'';
+function copyText(txt,ok){
+  const fail=()=>toast('No se pudo copiar. Mantén pulsado el texto para copiarlo.');
+  try{navigator.clipboard.writeText(txt).then(()=>toast(ok),fail)}catch(e){fail()}
+}
+function errText(e){
+  const m=String((e&&(e.message||e.error_description||e.msg))||e||'');
+  if(/Invalid login credentials/i.test(m))return 'Teléfono o PIN incorrectos.';
+  if(/already registered|already exists|duplicate key.*phone/i.test(m))return 'Ya hay una cuenta con ese teléfono. Entra o recupera tu PIN.';
+  if(/rate limit|too many|429/i.test(m))return 'Demasiados intentos seguidos. Espera unos minutos y vuelve a probar.';
+  if(/Failed to fetch|NetworkError|network/i.test(m))return 'Sin conexión. Revisa internet y vuelve a probar.';
+  if(/row-level security|permission denied/i.test(m))return 'No tienes permiso para hacer eso.';
+  if(/^[A-ZÁÉÍÓÚÑ¿]/.test(m)&&m.length<200&&!/[{}]/.test(m))return m;
+  return 'Algo ha fallado. Vuelve a probar en un momento.';
+}
+async function q(p){const r=await p;if(r.error)throw r.error;return r.data}
+
+/* ======================= Torneo: puntos y emparejamientos ======================= */
+function stats(players,matches){
+  const m={};players.forEach(p=>m[p.id]={p,pts:0,w:0,l:0,d:0,opp:[],bye:false});
+  matches.forEach(x=>{
+    if(!x.b){if(x.result==='BYE'&&m[x.a]){m[x.a].pts+=3;m[x.a].w++;m[x.a].bye=true}return}
+    if(!x.result||!m[x.a]||!m[x.b])return;
+    const A=m[x.a],B=m[x.b];A.opp.push(x.b);B.opp.push(x.a);
+    if(x.result==='A'){A.pts+=3;A.w++;B.l++}else if(x.result==='B'){B.pts+=3;B.w++;A.l++}else{A.pts++;B.pts++;A.d++;B.d++}
+  });
+  const mwp=s=>{const g=s.w+s.l+s.d;return g?Math.max(1/3,s.pts/(3*g)):1/3};
+  Object.values(m).forEach(s=>{s.omw=s.opp.length?s.opp.reduce((a,o)=>a+mwp(m[o]),0)/s.opp.length:0});
+  return Object.values(m).sort((a,b)=>b.pts-a.pts||b.omw-a.omw||a.p.name.localeCompare(b.p.name,'es'));
+}
+function pairNext(players,matches){
+  const st=stats(players,matches),played=new Set();
+  matches.forEach(x=>{if(x.b){played.add(x.a+'|'+x.b);played.add(x.b+'|'+x.a)}});
+  let list=st.filter(s=>!s.p.out);
+  if(!matches.length){for(let i=list.length-1;i>0;i--){const j=rnd(1)[0]%(i+1);[list[i],list[j]]=[list[j],list[i]]}}
+  let bye=null;
+  if(list.length%2){for(let i=list.length-1;i>=0;i--){if(!list[i].bye){bye=list.splice(i,1)[0];break}}if(!bye)bye=list.pop()}
+  let steps=0;
+  const solve=a=>{if(!a.length)return[];if(++steps>50000)return null;const x=a[0];
+    for(let i=1;i<a.length;i++){if(!played.has(x.p.id+'|'+a[i].p.id)){const r=solve(a.slice(1,i).concat(a.slice(i+1)));if(r)return[[x,a[i]],...r]}}return null};
+  let pairs=solve(list);
+  if(!pairs){pairs=[];for(let i=0;i<list.length;i+=2)pairs.push([list[i],list[i+1]])}
+  const out=pairs.map((pr,i)=>({table_no:i+1,a:pr[0].p.id,b:pr[1].p.id,result:null}));
+  if(bye)out.push({table_no:0,a:bye.p.id,b:null,result:'BYE'});
+  return out;
+}
+const plannedFor=n=>Math.max(1,Math.ceil(Math.log2(Math.max(2,n))));
+const curRound=ms=>ms.reduce((a,m)=>Math.max(a,m.round),0);
+const roundDone=(ms,r)=>ms.filter(m=>m.round===r).every(m=>m.result);
+function standingsTable(players,matches,meId){
+  const st=stats(players,matches);
+  return `<div class="card tblwrap"><table><thead><tr><th>#</th><th>Jugador</th><th class="num">Pts</th><th class="num">V-D-E</th><th class="num">Rival %</th></tr></thead><tbody>
+  ${st.map((s,i)=>`<tr class="${i<3&&s.pts>0?'top':''} ${s.p.id===meId?'me':''}"><td class="pos"><span>${i+1}</span></td><td>${esc(s.p.name)}${s.p.out?' <span class="note">(retirado)</span>':''}</td><td class="num pts">${s.pts}</td><td class="num">${s.w}-${s.l}-${s.d}</td><td class="num">${(s.omw*100).toFixed(1)}</td></tr>`).join('')}
+  </tbody></table></div>`;
+}
+function standingsText(title,game,players,matches){
+  return `🏆 ${title}\n${game}\n\n`+stats(players,matches).map((s,i)=>`${i+1}. ${s.p.name} · ${s.pts} pts (${s.w}-${s.l}-${s.d})`).join('\n');
+}
+const footer=keys=>`<footer class="legalfoot">${keys.map(k=>`<button class="link" data-legal="${k}">${LEGAL[k].t}</button>`).join('')}</footer>`;
+
+/* ======================= Textos legales ======================= */
+const PH=t=>`<mark>${t}</mark>`;
+const TITULAR=`Zebensui Pérez González (Mesa a Mesa), trabajador autónomo, NIF ${PH('[tu NIF]')}, con domicilio en ${PH('[calle y número]')}, Los Realejos (Santa Cruz de Tenerife). Contacto: ${PH('[email de contacto]')}.`;
+const PROVEEDORES=`<ul><li><b>Supabase</b> guarda la base de datos en servidores de la Unión Europea (Irlanda).</li><li><b>GitHub Pages</b> (GitHub, Inc.) sirve la web de la app. Recibe la dirección IP de quien la abre. GitHub está adherida al Marco de Privacidad de Datos UE-EE. UU.</li><li><b>Google Fonts</b> sirve las tipografías y recibe la dirección IP del dispositivo.</li></ul>`;
+const LEGAL={
+ priv:{t:'Privacidad',h:`<h2 class="authh">Política de privacidad</h2><p class="ver">Versión ${LEGAL_V}</p>
+  <h3>Quién es el responsable</h3><p>${TITULAR}</p>
+  <h3>Qué datos tratamos</h3><ul>
+   <li><b>De la cuenta de la tienda:</b> nombre de la tienda, nombre de la persona responsable, teléfono, el PIN y el código de recuperación (guardados cifrados, nunca en claro), la fecha y versión de las condiciones aceptadas y si quieres recibir novedades.</li>
+   <li><b>De los torneos:</b> nombre, juego y fecha del torneo, nombres o apodos de los jugadores, emparejamientos y resultados. Estos datos los introduce la tienda (ver «Jugadores y menores»).</li>
+   <li><b>De los móviles de los jugadores:</b> una clave aleatoria que identifica el móvil con el que cada jugador elige su nombre. No sabemos de quién es el móvil ni guardamos su número.</li>
+   <li><b>De seguridad:</b> registro de intentos para frenar abusos, que se borra a las 24 horas.</li></ul>
+  <h3>Para qué y con qué base legal</h3><ul>
+   <li>Crear y gestionar la cuenta y que la tienda organice sus torneos: es necesario para prestar el servicio (art. 6.1.b del RGPD).</li>
+   <li>Proteger las cuentas y frenar abusos: interés legítimo en la seguridad del servicio (art. 6.1.f).</li>
+   <li>Enviar novedades: solo si marcas la casilla (consentimiento, art. 6.1.a). Puedes retirarlo cuando quieras desde «Mi cuenta».</li></ul>
+  <p>No hacemos perfiles comerciales ni vendemos ni cedemos tus datos a nadie.</p>
+  <h3>Dónde se guardan y quién nos ayuda</h3>${PROVEEDORES}<p>Todos ellos solo tratan los datos para prestarnos su servicio.</p>
+  <h3>Cuánto tiempo</h3><p>Los datos de la cuenta y de los torneos, mientras la tienda mantenga la cuenta. Al borrar un torneo o la cuenta desde la app, se eliminan de la base de datos al momento.</p>
+  <h3>Tus derechos</h3><p>Puedes acceder a tus datos, rectificarlos, suprimirlos, oponerte o limitar su uso y pedir su portabilidad. Desde «Mi cuenta» puedes copiar todos tus datos y borrar la cuenta. También puedes escribir a ${PH('[email de contacto]')}. Si crees que no hemos atendido bien tu petición, puedes reclamar ante la Agencia Española de Protección de Datos (aepd.es).</p>
+  <h3>Edad</h3><p>Las cuentas de tienda son solo para mayores de 18 años.</p>
+  <h3>Cambios</h3><p>Si cambiamos esta política de forma importante, te lo mostraremos y te pediremos que la aceptes de nuevo.</p>`},
+ cond:{t:'Condiciones y aviso legal',h:`<h2 class="authh">Condiciones de uso y aviso legal</h2><p class="ver">Versión ${LEGAL_V}</p>
+  <h3>Titular de la app</h3><p>En cumplimiento de la Ley 34/2002 (LSSI): ${TITULAR}</p>
+  <h3>Qué es Mesa a Mesa</h3><p>Una herramienta para que las tiendas organicen torneos <b>no oficiales</b> de juegos de cartas: inscripción, emparejamientos por sistema suizo, resultados que anotan los propios jugadores desde su móvil y clasificación. Mesa a Mesa no está asociada ni respaldada por ninguna editorial de juegos. Las marcas de los juegos que escriban los usuarios pertenecen a sus titulares.</p>
+  <h3>La cuenta de la tienda</h3><ul><li>Solo las tiendas tienen cuenta. Los jugadores participan con el enlace del torneo, sin registrarse.</li><li>Los datos que das al registrarte deben ser verdaderos.</li><li>Tu PIN y tu código de recuperación son secretos. Eres responsable de lo que se haga con tu cuenta.</li><li>El enlace de cada torneo da acceso a sus nombres y resultados: compártelo solo con los jugadores. Si se difunde donde no debe, cámbialo desde la app.</li></ul>
+  <h3>Resultados</h3><ul><li>Cuando los dos jugadores de una mesa anotan lo mismo, el resultado queda confirmado. Si no coinciden, decide la tienda.</li><li>Los emparejamientos y la clasificación son una ayuda. La decisión final sobre el torneo es siempre de la tienda organizadora.</li></ul>
+  <h3>Uso correcto</h3><ul><li>Mete solo los datos de jugadores necesarios para el torneo (ver «Jugadores y menores»).</li><li>No uses nombres ofensivos ni la app para fines distintos a organizar torneos.</li><li>No intentes acceder a datos de otras tiendas ni sobrecargar el servicio.</li></ul>
+  <h3>Precio</h3><p>Durante la fase de prueba la app es gratuita. Si en el futuro pasa a ser de pago, te avisaremos con antelación y no se te cobrará nada sin que lo aceptes expresamente.</p>
+  <h3>Responsabilidad</h3><p>Intentamos que la app funcione siempre, pero puede haber cortes o errores. Te recomendamos copiar la clasificación al terminar cada torneo. Nada de esto limita la responsabilidad que la ley no permita limitar.</p>
+  <h3>Propiedad intelectual</h3><p>El nombre, el diseño y el código de Mesa a Mesa pertenecen a su titular. No puedes copiarlos ni revenderlos sin permiso.</p>
+  <h3>Baja</h3><p>Puedes borrar tu cuenta cuando quieras desde «Mi cuenta». Podemos suspender cuentas que incumplan estas condiciones.</p>
+  <h3>Ley aplicable</h3><p>Se aplica la ley española. Para cualquier conflicto, los juzgados de Santa Cruz de Tenerife, salvo que la ley establezca otros.</p>`},
+ jug:{t:'Jugadores y menores',h:`<h2 class="authh">Datos de los jugadores y menores</h2><p class="ver">Versión ${LEGAL_V}</p>
+  <h3>Si eres jugador</h3><p>La <b>tienda que organiza el torneo</b> es la responsable de tus datos: tu nombre o apodo y tus resultados. Los usa para emparejarte, anotar tus partidas y publicar la clasificación. Cualquiera con el enlace del torneo ve los nombres y resultados. Para usar un apodo, cambiar tu nombre o que te quiten, habla con el organizador. Tu móvil guarda una clave aleatoria para recordar qué nombre elegiste; no guardamos tu número ni sabemos de quién es el móvil.</p>
+  <h3>Quién responde de los datos de los jugadores</h3><p>La <b>tienda</b> decide qué jugadores apunta y qué datos pone, así que es la <b>responsable</b> de esos datos. Mesa a Mesa actúa como <b>encargado del tratamiento</b> (art. 28 del RGPD): solo los usa para mostrar los torneos de esa tienda y siguiendo sus indicaciones.</p>
+  <h3>Lo que se compromete Mesa a Mesa</h3><ul><li>Usar los datos de jugadores solo para organizar los torneos de la tienda.</li><li>No cederlos a nadie ni usarlos para nada más.</li><li>Mantenerlos protegidos y confidenciales.</li><li>Ayudar a la tienda si un jugador ejerce sus derechos.</li><li>Borrarlos cuando la tienda borre el torneo o la cuenta.</li><li>Usar solo los proveedores indicados en la Política de privacidad y avisar a la tienda antes de cambiarlos.</li></ul>
+  <h3>Lo que debe hacer la tienda</h3><ul><li><b>Datos mínimos:</b> nombre e inicial del apellido, o un apodo. Nunca teléfonos, emails, fechas de nacimiento ni fotos de los jugadores.</li>
+   <li><b>Menores de 14 años:</b> según la ley española (art. 7 de la LOPDGDD), solo con permiso de su madre, padre o tutor. Para menores, mejor usar apodos.</li>
+   <li><b>Informar a los jugadores</b>, por ejemplo con un cartel en la tienda o un mensaje en el grupo.</li>
+   <li>Compartir el enlace del torneo solo con los jugadores y cambiarlo si se difunde donde no debe.</li>
+   <li>Si comparte la clasificación por WhatsApp u otras redes, lo hace bajo su responsabilidad. Si un jugador no quiere salir, usar un apodo o quitarlo.</li></ul>
+  <h3>Texto que puede usar la tienda</h3><p class="quote">En los torneos de ${PH('[nombre de la tienda]')} usamos Mesa a Mesa. Guardamos tu nombre o apodo y tus resultados para emparejarte y publicar la clasificación, que verá cualquiera con el enlace del torneo. Responsable: ${PH('[nombre de la tienda]')}. Si prefieres usar un apodo o que te quitemos, díselo al organizador. Menores de 14 años: necesitamos el permiso de su madre, padre o tutor.</p>`},
+ local:{t:'Cookies',h:`<h2 class="authh">Cookies y almacenamiento</h2><p class="ver">Versión ${LEGAL_V}</p>
+  <p>Mesa a Mesa <b>no usa cookies de publicidad ni de análisis</b>, y no te sigue entre webs.</p>
+  <h3>Lo que guarda en tu navegador</h3><ul><li>Tiendas: la sesión abierta, para no tener que poner el PIN cada vez.</li><li>Jugadores: la clave aleatoria del móvil y el nombre que eligieron en cada torneo.</li></ul>
+  <p>Es almacenamiento técnico, necesario para que la app funcione, por lo que no requiere consentimiento (art. 22.2 de la LSSI). Puedes borrarlo cerrando sesión o borrando los datos del navegador.</p>
+  <h3>Servicios externos</h3><p>Para mostrar las letras, el navegador descarga tipografías de Google Fonts, y la web la sirve GitHub Pages. Ambos reciben la dirección IP del dispositivo, como pasa con cualquier web que los usa.</p>`}
+};
+let legalBack=null;
+function showLegal(tab){
+  if(!legalBack)legalBack={html:root().innerHTML,y:window.scrollY};
+  root().innerHTML=`<div class="brand"><div class="logo"><i></i>Mesa a Mesa</div><button class="ghost" id="legalBack">Volver</button></div>
+  <nav class="ltabs">${Object.entries(LEGAL).map(([k,o])=>`<button data-legal="${k}" class="${k===tab?'on':''}">${o.t}</button>`).join('')}</nav>
+  <article class="card legal">${LEGAL[tab].h}</article>`;
+  window.scrollTo(0,0);
+}
+function closeLegal(){const b=legalBack;legalBack=null;if(MODE==='player')return renderPlayer();if(O.screen)return renderOwner();if(b){root().innerHTML=b.html;window.scrollTo(0,b.y)}}
+
+/* ======================= DUEÑOS ======================= */
+const O={screen:null,authMode:'login',shop:null,uid:null,tours:[],t:null,players:[],matches:[],view:'jug',viewRound:null,
+  acct:false,acctMode:null,newT:false,link:false,linkConfirm:false,delT:false,pendingCode:null,afterCode:null,chan:null,busy:false};
+
+function authScreen(mode){
+  O.screen=null;O.authMode=mode;
+  const seg=`<div class="seg"><button data-auth="login" class="${mode==='login'?'on':''}">Entrar</button><button data-auth="signup" class="${mode==='signup'?'on':''}">Crear cuenta</button></div>`;
+  const err='<p class="err" id="aErr" role="alert" hidden></p>';
+  let body='';
+  if(mode==='login')body=seg+`<form class="form" id="fLogin" novalidate>
+    <label>Teléfono de la tienda<input type="tel" id="lPhone" inputmode="tel" autocomplete="username" placeholder="600 123 456"></label>
+    <label>PIN de 4 cifras<input type="password" id="lPin" inputmode="numeric" maxlength="4" autocomplete="current-password" placeholder="••••"></label>
+    ${err}<button class="primary" type="submit">Entrar</button>
+    <button type="button" class="link" data-auth="recover">¿Has olvidado tu PIN?</button></form>`;
+  if(mode==='signup')body=seg+`<form class="form" id="fSignup" novalidate>
+    <label>Nombre de la tienda<input type="text" id="sShop" maxlength="50" autocomplete="organization" placeholder="Ej.: Dragón Rojo Cartas"></label>
+    <label>Tu nombre<input type="text" id="sOwner" maxlength="40" autocomplete="name" placeholder="Persona que organiza los torneos"></label>
+    <label>Teléfono<input type="tel" id="sPhone" inputmode="tel" autocomplete="tel" placeholder="600 123 456"></label>
+    <div class="row"><label>PIN de 4 cifras<input type="password" id="sPin" inputmode="numeric" maxlength="4" autocomplete="new-password" placeholder="••••"></label>
+    <label>Repite el PIN<input type="password" id="sPin2" inputmode="numeric" maxlength="4" autocomplete="new-password" placeholder="••••"></label></div>
+    <label class="chk"><input type="checkbox" id="sLegal"><span>He leído y acepto la <button type="button" class="link" data-legal="priv">Política de privacidad</button>, las <button type="button" class="link" data-legal="cond">Condiciones de uso</button> y el <button type="button" class="link" data-legal="jug">encargo de datos de jugadores</button>.</span></label>
+    <label class="chk"><input type="checkbox" id="sAge"><span>Soy mayor de 18 años y uso la app en nombre de la tienda.</span></label>
+    <label class="chk"><input type="checkbox" id="sNews"><span>Quiero recibir novedades de Mesa a Mesa (opcional).</span></label>
+    ${err}<button class="primary" type="submit">Crear cuenta</button></form>`;
+  if(mode==='recover')body=`<form class="form" id="fRecover" novalidate>
+    <h2 class="authh">Recuperar el PIN</h2>
+    <p class="note">Usa el código de recuperación de 12 caracteres que guardaste al crear la cuenta.</p>
+    <label>Teléfono<input type="tel" id="rPhone" inputmode="tel" autocomplete="username" placeholder="600 123 456"></label>
+    <label>Código de recuperación<input type="text" id="rCode" autocomplete="off" autocapitalize="characters" placeholder="ABCD-EFGH-JKLM"></label>
+    <div class="row"><label>PIN nuevo<input type="password" id="rPin" inputmode="numeric" maxlength="4" autocomplete="new-password" placeholder="••••"></label>
+    <label>Repite el PIN<input type="password" id="rPin2" inputmode="numeric" maxlength="4" autocomplete="new-password" placeholder="••••"></label></div>
+    ${err}<button class="primary" type="submit">Cambiar PIN y entrar</button>
+    <button type="button" class="link" data-auth="login">Volver a entrar</button></form>`;
+  if(mode==='code')body=`<div class="form">
+    <h2 class="authh">Tu código de recuperación</h2>
+    <p class="note">Si olvidas el PIN, solo podrás entrar con este código. Haz una captura o apúntalo en un sitio seguro. No lo volveremos a mostrar.</p>
+    <div class="codebox">${fmtCode(O.pendingCode)}</div>
+    <button type="button" class="ghost" id="copyCode">Copiar código</button>
+    <label class="chk"><input type="checkbox" id="codeOk"><span>Lo he guardado en un sitio seguro.</span></label>
+    <button class="primary" id="codeGo" disabled>Continuar</button></div>`;
+  root().innerHTML=`<div class="hero"><div class="logo big"><i></i>Mesa a Mesa</div><p class="pill">Acceso para tiendas organizadoras</p></div>
+    <section class="card">${body}</section>
+    <p class="panelnote note">¿Eres jugador? No necesitas cuenta: abre el enlace o escanea el QR que te dé la tienda.</p>
+    ${footer(['priv','cond','jug','local'])}`;
+}
+function aErr(m){const e=$('#aErr');if(e){e.textContent=m;e.hidden=!m}}
+function busy(btn,on,label){if(!btn)return;if(on){btn.dataset.l=btn.textContent;btn.disabled=true;btn.textContent=label||'Un momento…'}else{btn.disabled=false;btn.textContent=btn.dataset.l||btn.textContent}}
+
+async function doLogin(btn){
+  const ph=normPhone(val('lPhone')),pin=val('lPin');
+  if(!okPhone(ph))return aErr('Escribe un teléfono español de 9 cifras.');
+  if(!/^\d{4}$/.test(pin))return aErr('El PIN tiene 4 cifras.');
+  busy(btn,true,'Entrando…');
+  const {error}=await sb.auth.signInWithPassword({email:mailOf(ph),password:passOf(ph,pin)});
+  busy(btn,false);if(error)return aErr(errText(error));
+  await ownerStart();
+}
+async function doSignup(btn){
+  const shop=val('sShop').trim(),owner=val('sOwner').trim(),ph=normPhone(val('sPhone')),pin=val('sPin'),pin2=val('sPin2');
+  if(shop.length<2)return aErr('Escribe el nombre de la tienda.');
+  if(owner.length<2)return aErr('Escribe tu nombre.');
+  if(/[<>]/.test(shop+owner))return aErr('Los nombres no pueden llevar los signos < ni >.');
+  if(!okPhone(ph))return aErr('Escribe un teléfono español de 9 cifras.');
+  if(!/^\d{4}$/.test(pin))return aErr('El PIN tiene que ser de 4 cifras.');
+  if(weakPin(pin))return aErr('Ese PIN es muy fácil de adivinar. Elige otro.');
+  if(pin!==pin2)return aErr('Los dos PIN no coinciden.');
+  if(!$('#sLegal').checked)return aErr('Para crear la cuenta tienes que aceptar la privacidad, las condiciones y el encargo de datos.');
+  if(!$('#sAge').checked)return aErr('La cuenta es solo para mayores de 18 años que representan a la tienda.');
+  busy(btn,true,'Creando cuenta…');
+  const {data,error}=await sb.auth.signUp({email:mailOf(ph),password:passOf(ph,pin),
+    options:{data:{app:'mesa-a-mesa',shop,owner,phone:ph,consent:LEGAL_V,news:$('#sNews').checked}}});
+  if(error){busy(btn,false);return aErr(errText(error))}
+  if(!data.session){busy(btn,false);return aErr('Cuenta creada, pero falta desactivar «Confirm email» en Supabase. Avisa al administrador de la app.')}
+  const code=newCode();
+  try{await q(sb.rpc('set_recovery_code',{p_code:code}))}catch(e){busy(btn,false);return aErr(errText(e))}
+  O.pendingCode=code;O.afterCode=async()=>{await ownerStart();O.newT=true;renderOwner();toast('Cuenta creada. Crea tu primer torneo')};
+  authScreen('code');
+}
+async function doRecover(btn){
+  const ph=normPhone(val('rPhone')),code=cleanCode(val('rCode')),pin=val('rPin'),pin2=val('rPin2');
+  if(!okPhone(ph))return aErr('Escribe un teléfono español de 9 cifras.');
+  if(code.length!==12)return aErr('El código tiene 12 caracteres.');
+  if(!/^\d{4}$/.test(pin)||weakPin(pin))return aErr('Elige un PIN nuevo de 4 cifras que no sea fácil de adivinar.');
+  if(pin!==pin2)return aErr('Los dos PIN no coinciden.');
+  busy(btn,true,'Comprobando…');
+  try{
+    const ok=await q(sb.rpc('recover_pin',{p_phone:ph,p_code:code,p_pin:pin}));
+    if(!ok){busy(btn,false);return aErr('El teléfono o el código no son correctos. Tras 5 fallos se bloquea una hora.')}
+    const {error}=await sb.auth.signInWithPassword({email:mailOf(ph),password:passOf(ph,pin)});if(error)throw error;
+    const nc=newCode();await q(sb.rpc('set_recovery_code',{p_code:nc}));
+    O.pendingCode=nc;O.afterCode=async()=>{await ownerStart();toast('PIN cambiado')};
+    authScreen('code');
+    const n=document.querySelector('#root .note');if(n)n.textContent='El código anterior ya no sirve. Este es tu código nuevo: guárdalo. No lo volveremos a mostrar.';
+  }catch(e){busy(btn,false);aErr(errText(e))}
+}
+
+async function ownerStart(){
+  const {data:{session}}=await sb.auth.getSession();
+  if(!session)return authScreen('login');
+  O.uid=session.user.id;
+  try{
+    O.shop=await q(sb.from('shops').select('*').eq('id',O.uid).maybeSingle());
+    if(!O.shop){await sb.auth.signOut();return authScreen('login')}
+    O.tours=await q(sb.from('tournaments').select('*').order('created_at',{ascending:false}));
+  }catch(e){root().innerHTML=`<div class="card form"><p class="err">${esc(errText(e))}</p><button class="primary" id="retry">Volver a intentarlo</button></div>`;return}
+  const last=store.get('mam-ultimo',null);
+  O.screen='home';
+  if(last&&O.tours.some(t=>t.id===last))return openTour(last);
+  renderOwner();
+}
+async function loadTour(){
+  const [ps,ms]=await Promise.all([
+    q(sb.from('players').select('id,name,out,claim_hash,created_at').eq('tournament_id',O.t.id).order('created_at').order('id')),
+    q(sb.from('matches').select('*').eq('tournament_id',O.t.id).order('round').order('table_no'))]);
+  O.players=ps.map(p=>({...p,claimed:!!p.claim_hash}));O.matches=ms;
+}
+async function openTour(id){
+  O.t=O.tours.find(t=>t.id===id);if(!O.t)return renderOwner();
+  O.screen='tour';O.view=O.t.status==='setup'?'jug':(O.t.status==='done'?'cla':'ron');O.viewRound=null;O.link=false;O.delT=false;O.acct=false;
+  store.set('mam-ultimo',id);
+  root().innerHTML='<div class="card loading">Cargando torneo…</div>';
+  try{await loadTour()}catch(e){toast(errText(e));O.screen='home';return renderOwner()}
+  subscribe();renderOwner();window.scrollTo(0,0);
+}
+function subscribe(){
+  if(O.chan){sb.removeChannel(O.chan);O.chan=null}
+  if(!O.t)return;
+  const id=O.t.id;let timer=null;
+  const refresh=()=>{clearTimeout(timer);timer=setTimeout(async()=>{
+    if(!O.t||O.t.id!==id)return;
+    const before=new Map(O.matches.map(m=>[m.id,m]));
+    try{await loadTour()}catch(e){return}
+    O.matches.forEach(m=>{const b=before.get(m.id);if(!b||!m.b)return;
+      if(m.result&&!b.result&&m.rep_a&&m.rep_a===m.rep_b)toast(`Mesa ${m.table_no} confirmada: ${repWord(m.result,m)}`);
+      else if(!m.result&&(m.rep_a!==b.rep_a||m.rep_b!==b.rep_b)){
+        if(m.rep_a&&m.rep_b&&m.rep_a!==m.rep_b)toast(`Mesa ${m.table_no}: los resultados no coinciden`);
+        else toast(`Mesa ${m.table_no}: ${pname((m.rep_a!==b.rep_a)?m.a:m.b)} ha anotado su resultado`);
+      }});
+    if(O.screen==='tour'&&!O.link&&!O.acctMode&&!O.delT)renderOwner();
+  },350)};
+  O.chan=sb.channel('torneo-'+id)
+    .on('postgres_changes',{event:'*',schema:'public',table:'matches',filter:'tournament_id=eq.'+id},refresh)
+    .on('postgres_changes',{event:'*',schema:'public',table:'players',filter:'tournament_id=eq.'+id},refresh)
+    .subscribe();
+}
+const pname=id=>(O.players.find(p=>p.id===id)||{name:'—'}).name;
+function repWord(r,m,nm){nm=nm||pname;return r==='A'?`gana ${nm(m.a)}`:r==='B'?`gana ${nm(m.b)}`:'empate'}
+
+function renderOwner(){
+  const keep={};document.querySelectorAll('#root input[id]').forEach(i=>{if(i.type!=='checkbox')keep[i.id]=i.value});
+  const foc=document.activeElement&&document.activeElement.id;
+  if(O.screen==='home')renderHome();
+  else if(O.screen==='tour')renderTour();
+  Object.entries(keep).forEach(([id,v])=>{const i=document.getElementById(id);if(i&&v&&!i.value)i.value=v});
+  if(foc){const f=document.getElementById(foc);if(f&&f.tagName==='INPUT')f.focus()}
+}
+function ownerBrand(){
+  return `<div class="brand"><button class="logo" id="goHome" aria-label="Ir a mis torneos"><i></i>Mesa a Mesa</button>
+  <div class="bbtns"><button class="ghost" id="acctBtn">Mi cuenta</button></div></div>${O.acct?acctHtml():''}`;
+}
+function newTourForm(){
+  return `<form class="card form" id="fNewT" novalidate><h2 class="authh">Nuevo torneo</h2>
+    <label>Nombre del torneo<input type="text" id="nfName" maxlength="60" placeholder="Ej.: Liga del sábado"></label>
+    <label>Juego y formato<input type="text" id="nfGame" maxlength="60" placeholder="Ej.: Cartas · Formato estándar"></label>
+    <label>Fecha<input type="date" id="nfDate" value="${new Date().toISOString().slice(0,10)}"></label>
+    <p class="err" id="nfErr" hidden></p>
+    <div class="row"><button class="primary" type="submit" style="flex:1">Crear torneo</button><button class="ghost" type="button" id="nfX">Cancelar</button></div></form>`;
+}
+function renderHome(){
+  const st={setup:['Inscripción','chip'],running:['En juego','chip live'],done:['Terminado','chip done']};
+  root().innerHTML=ownerBrand()+`<div class="sectitle"><h2>Mis torneos</h2><span class="pill">${esc(O.shop.name)}</span></div>
+  ${O.newT?newTourForm():`<button class="primary" id="newT">Nuevo torneo</button>`}
+  <div class="tlist">${O.tours.length?O.tours.map(t=>`<button class="card tcard" data-open="${t.id}"><div style="min-width:0"><b>${esc(t.name)}</b><span>${esc(t.game)} · ${esc(fday(t.day))}</span></div><span class="${st[t.status][1]}">${st[t.status][0]}</span></button>`).join('')
+   :`<div class="card empty"><b>Aún no tienes torneos</b><span class="note">Crea el primero, apunta a los jugadores y comparte el enlace para que anoten sus partidas.</span></div>`}</div>
+  ${footer(['priv','cond','jug'])}`;
+}
+function renderTour(){
+  const t=O.t,r=curRound(O.matches);
+  const st={setup:'Inscripción abierta',running:`Ronda ${r} de ${t.planned}`,done:'Finalizado'}[t.status];
+  const conn=O.players.filter(p=>p.claimed).length;
+  let h=ownerBrand()+`<section class="head"><div class="chips"><span class="chip ${t.status==='running'?'live':t.status==='done'?'done':''}">${st}</span></div>
+    <h1>${esc(t.name)}</h1><div class="meta"><span>${esc(t.game)}</span><span>${esc(fday(t.day))}</span><span>${O.players.filter(p=>!p.out).length} jugadores</span>${t.status!=='done'?`<span>${conn} conectados</span>`:''}</div></section>`;
+  if(t.status!=='done')h+=`<button class="blue" id="linkBtn">Enlace y QR para los jugadores</button>`;
+  if(O.link)h+=linkHtml();
+  h+=`<nav class="tabs" role="tablist">${[['jug','Jugadores'],['ron','Rondas'],['cla','Clasificación']].map(([k,l])=>`<button role="tab" data-v="${k}" aria-selected="${O.view===k}">${l}</button>`).join('')}</nav>`;
+  h+=`<main>${O.view==='jug'?vJug():O.view==='ron'?vRon():vCla()}</main>`;
+  h+=footer(['priv','cond','jug']);
+  root().innerHTML=h;
+  if(O.link)drawQR();
+}
+function tourUrl(){return location.origin+location.pathname+'?t='+O.t.token}
+function linkHtml(){
+  return `<section class="card linkbox"><h2 class="authh">Enlace para los jugadores</h2>
+    <p class="note">Ponlo en pantalla o en cada mesa. Cada jugador lo abre con su móvil, elige su nombre y anota su partida. Tú ves llegar los resultados al momento.</p>
+    <div class="qr" id="qr" aria-label="Código QR del enlace"></div>
+    <div class="urlbox">${esc(tourUrl())}</div>
+    <div class="btngrid"><button id="copyLink">Copiar enlace</button>${navigator.share?'<button id="shareLink">Compartir</button>':'<button id="closeLink">Cerrar</button>'}</div>
+    ${O.linkConfirm?`<div class="reps bad"><span>El enlace actual dejará de funcionar y tendrás que dar el nuevo a los jugadores. Los que ya eligieron nombre lo mantienen.</span><button id="rotateGo" style="background:var(--bad)">Sí, cambiar enlace</button></div>`:`<button class="mini" id="rotate">Cambiar enlace (si se ha difundido donde no debe)</button>`}
+    ${navigator.share?'<button class="mini" id="closeLink">Cerrar</button>':''}</section>`;
+}
+function drawQR(){const el=$('#qr');if(!el)return;el.innerHTML='';
+  if(window.QRCode){try{new QRCode(el,{text:tourUrl(),width:220,height:220,correctLevel:QRCode.CorrectLevel.M})}catch(e){el.textContent='No se pudo dibujar el QR. Usa el enlace.'}}
+  else el.innerHTML='<span class="note">No se pudo cargar el QR. Usa el enlace.</span>'}
+
+function vJug(){
+  const t=O.t,can=t.status==='setup';
+  let h=`<div class="sec"><div class="sectitle"><h2>Jugadores</h2><span class="pill">${O.players.length} apuntados</span></div>`;
+  if(can)h+=`<p class="note">Apunta nombre e inicial del apellido, o un apodo. Menores de 14 años, solo con permiso de su madre, padre o tutor. <button class="link" data-legal="jug">Más info</button></p>
+    <form class="row" id="fAdd"><input type="text" id="pName" placeholder="Nombre del jugador" autocomplete="off" maxlength="40"><button class="primary" type="submit">Añadir</button></form>`;
+  h+=`<ul class="plist card">${O.players.map((p,i)=>`<li class="${p.out?'out':''}"><span class="n">${String(i+1).padStart(2,'0')}</span><span class="nm">${esc(p.name)}</span>
+    ${p.claimed&&t.status!=='done'?`<span class="tag">En su móvil</span>`:''}
+    ${t.status!=='done'&&p.claimed?`<button class="mini" data-release="${p.id}">Liberar</button>`:''}
+    ${can?`<button class="mini" data-del="${p.id}">Quitar</button>`:t.status==='running'?`<button class="mini" data-out="${p.id}">${p.out?'Volver':'Retirar'}</button>`:''}</li>`).join('')||'<li><span class="note">Aún no hay nadie apuntado.</span></li>'}</ul>`;
+  if(can){
+    h+=`<p class="note">${O.players.length<2?'Apunta al menos 2 jugadores para empezar.':`Con ${O.players.length} jugadores se recomiendan ${plannedFor(O.players.length)} rondas de sistema suizo.`} Los jugadores pueden abrir ya el enlace y elegir su nombre.</p>
+    <button class="primary" id="startB" ${O.players.length<2?'disabled':''}>Empezar torneo y emparejar ronda 1</button>`;
+  }else if(t.status==='running')h+=`<p class="note">«Retirar» deja al jugador fuera de los próximos emparejamientos. «Liberar» permite que el jugador vuelva a elegir su nombre en otro móvil.</p>`;
+  h+=delTourHtml();
+  return h+'</div>';
+}
+function delTourHtml(){
+  return O.delT?`<div class="card form" style="border-color:#E9B8BA"><p class="note"><b>Se borrarán el torneo, sus jugadores y resultados.</b> No se puede deshacer.</p><div class="row"><button class="dangerbtn" id="delTGo" style="flex:1">Borrar torneo</button><button class="ghost" id="delTX">Cancelar</button></div></div>`
+    :`<button class="mini" id="delT" style="align-self:flex-start">Borrar este torneo</button>`;
+}
+function vRon(){
+  const t=O.t;
+  if(!O.matches.length)return `<div class="sec"><p class="note">Las rondas aparecen cuando empieces el torneo desde la pestaña Jugadores.</p></div>`;
+  const last=curRound(O.matches);
+  if(O.viewRound==null||O.viewRound>last)O.viewRound=last;
+  const r=O.viewRound,isLast=r===last,lock=t.status==='done';
+  const ms=O.matches.filter(m=>m.round===r),real=ms.filter(m=>m.b),done=real.filter(m=>m.result).length;
+  const st=stats(O.players,O.matches),pts={};st.forEach(s=>pts[s.p.id]=s.pts);
+  let h=`<div class="sec"><div class="rnav">${Array.from({length:last},(_,i)=>`<button data-r="${i+1}" class="${i+1===r?'on':''}">R${i+1}</button>`).join('')}</div>
+  <div class="sectitle"><h2>Ronda ${r}</h2><span class="pill">${done} de ${real.length} mesas</span></div>
+  <div class="progress"><i style="width:${real.length?done/real.length*100:100}%"></i></div>`;
+  ms.forEach(m=>{
+    if(!m.b){h+=`<div class="slip"><header><b>Descansa</b><span>Bye</span></header><div class="bye"><strong>${esc(pname(m.a))}</strong><span>Gana automáticamente · +3</span></div></div>`;return}
+    let stc='',stt='Pendiente',reps='';
+    if(m.result){stc='ok';stt=(m.rep_a&&m.rep_a===m.rep_b&&m.rep_a===m.result)?'Confirmado':'Anotado'}
+    else if(m.rep_a&&m.rep_b&&m.rep_a!==m.rep_b){stc='bad';stt='No coinciden';
+      reps=`<div class="reps bad"><span><b>${esc(pname(m.a))}</b> ha marcado: ${esc(repWord(m.rep_a,m))}</span><span><b>${esc(pname(m.b))}</b> ha marcado: ${esc(repWord(m.rep_b,m))}</span><span>Pregunta en la mesa y toca el resultado correcto.</span></div>`}
+    else if(m.rep_a||m.rep_b){stc='wait';stt='Falta el rival';const who=m.rep_a?m.a:m.b,rr=m.rep_a||m.rep_b;
+      reps=`<div class="reps wait"><span><b>${esc(pname(who))}</b> ha marcado: ${esc(repWord(rr,m))}</span><span>Falta que lo confirme su rival.</span>${lock?'':`<button data-accept="${m.id}" data-k="${rr}">Dar por bueno</button>`}</div>`}
+    const cls=k=>m.result===k?'on':(m.result&&m.result!=='D'?'lose':'');
+    h+=`<div class="slip"><header><b>Mesa ${m.table_no}</b><span class="${stc}">${stt}</span></header>
+    <div class="pick"><button data-m="${m.id}" data-k="A" class="${cls('A')}" ${lock?'disabled':''}>${esc(pname(m.a))}<small>${m.result==='A'?'Gana':(pts[m.a]||0)+' pts'}</small></button>
+    <button data-m="${m.id}" data-k="D" class="draw ${m.result==='D'?'on':''}" ${lock?'disabled':''}>Empate</button>
+    <button data-m="${m.id}" data-k="B" class="${cls('B')}" ${lock?'disabled':''}>${esc(pname(m.b))}<small>${m.result==='B'?'Gana':(pts[m.b]||0)+' pts'}</small></button></div>${reps}</div>`;
+  });
+  if(isLast&&t.status==='running'){
+    const ok=roundDone(O.matches,r),fin=r>=t.planned;
+    h+=`<p class="note">Los jugadores anotan desde su móvil. Si los dos coinciden, la mesa se confirma sola. También puedes tocar tú el ganador.</p>`;
+    h+=fin?`<button class="dark" id="finB" ${ok?'':'disabled'}>Cerrar torneo y ver campeón</button>`
+      :`<button class="primary" id="nextB" ${ok?'':'disabled'}>Emparejar ronda ${r+1}</button><button class="mini" id="finB" ${ok?'':'disabled'}>Terminar antes de tiempo</button>`;
+  }
+  return h+'</div>';
+}
+function vCla(){
+  const st=stats(O.players,O.matches);
+  let h=`<div class="sec"><div class="sectitle"><h2>${O.t.status==='done'?'Clasificación final':'Clasificación'}</h2><span class="pill">Desempate: % rivales</span></div>`;
+  if(O.t.status==='done'&&st[0])h+=`<div class="card champ"><span class="chip" style="align-self:flex-start">Campeón</span><strong>${esc(st[0].p.name)}</strong><span class="note">${st[0].pts} puntos · ${st[0].w}-${st[0].l}-${st[0].d}</span></div>`;
+  h+=standingsTable(O.players,O.matches)+`<button class="ghost" id="copyB" style="align-self:flex-start">Copiar clasificación para WhatsApp</button>
+  <p class="note">«Rival %» es la media de victorias de tus rivales. Con los mismos puntos, gana quien se ha enfrentado a rivales más fuertes.</p>`;
+  if(O.t.status==='done')h+=delTourHtml();
+  return h+'</div>';
+}
+function acctHtml(){
+  const s=O.shop;let extra='';
+  if(O.acctMode==='pin')extra=`<form class="form card" id="fPin" novalidate style="padding:12px">
+    <label>PIN actual<input type="password" id="cPin0" inputmode="numeric" maxlength="4" autocomplete="current-password"></label>
+    <div class="row"><label>PIN nuevo<input type="password" id="cPin1" inputmode="numeric" maxlength="4" autocomplete="new-password"></label>
+    <label>Repite<input type="password" id="cPin2" inputmode="numeric" maxlength="4" autocomplete="new-password"></label></div>
+    <p class="err" id="cErr" hidden></p><button class="primary" type="submit">Guardar PIN</button></form>`;
+  if(O.acctMode==='code')extra=`<div class="form card" style="padding:12px"><p class="note">Tu código nuevo. El anterior ya no sirve. Guárdalo: no lo volveremos a mostrar.</p>
+    <div class="codebox">${fmtCode(O.pendingCode)}</div><button class="ghost" id="copyCode">Copiar código</button><button class="primary" data-acct="close">Ya lo he guardado</button></div>`;
+  if(O.acctMode==='del')extra=`<form class="form card" id="fDel" style="padding:12px;border-color:#E9B8BA">
+    <p class="note"><b>Se borrarán tu cuenta, todos tus torneos, jugadores y resultados.</b> No se puede deshacer. Si quieres conservar algo, copia antes tus datos.</p>
+    <label>Escribe BORRAR para confirmar<input type="text" id="delTxt" autocomplete="off" autocapitalize="characters"></label>
+    <button class="dangerbtn" type="submit" id="delGo" disabled>Borrar mi cuenta para siempre</button></form>`;
+  return `<section class="card form acct"><h2 class="authh">Mi cuenta</h2>
+    <dl><dt>Tienda</dt><dd>${esc(s.name)}</dd><dt>Responsable</dt><dd>${esc(s.owner_name)}</dd><dt>Teléfono</dt><dd>••• ••• ${esc(s.phone.slice(-3))}</dd>
+    <dt>Alta</dt><dd>${fdate(s.created_at)}</dd><dt>Condiciones</dt><dd>Aceptadas el ${fdate(s.consent_at)} (${esc(s.consent_version)})</dd></dl>
+    <label class="chk"><input type="checkbox" id="newsChk" ${s.news?'checked':''}><span>Recibir novedades de Mesa a Mesa</span></label>
+    <div class="btngrid"><button data-acct="pin">Cambiar PIN</button><button data-acct="code">Nuevo código de recuperación</button>
+      <button data-acct="export">Copiar mis datos</button><button data-legal="priv">Privacidad y condiciones</button>
+      <button data-acct="logout">Cerrar sesión</button><button class="danger" data-acct="del">Borrar mi cuenta</button></div>${extra}</section>`;
+}
+
+/* ---------- acciones del dueño ---------- */
+async function act(fn,btn,label){
+  if(O.busy)return;O.busy=true;if(btn)busy(btn,true,label);
+  try{await fn()}catch(e){toast(errText(e));if(btn&&document.body.contains(btn))busy(btn,false)}
+  finally{O.busy=false}
+}
+async function setResult(id,k){
+  const m=O.matches.find(x=>x.id===id);if(!m)return;
+  const nr=m.result===k?null:k;
+  await q(sb.from('matches').update({result:nr}).eq('id',id));m.result=nr;renderOwner();
+}
+async function pairAndInsert(){
+  const next=curRound(O.matches)+1;
+  const rows=pairNext(O.players,O.matches).map(x=>({...x,round:next,tournament_id:O.t.id}));
+  await q(sb.from('matches').insert(rows));
+  await loadTour();O.viewRound=next;
+}
+async function exportData(){
+  const ts=await q(sb.from('tournaments').select('id,name,game,day,status,created_at').order('created_at'));
+  const ps=await q(sb.from('players').select('id,tournament_id,name,out'));
+  const ms=await q(sb.from('matches').select('tournament_id,round,table_no,a,b,result'));
+  const nm=id=>(ps.find(p=>p.id===id)||{}).name||null;
+  const out={app:'Mesa a Mesa',exportado:new Date().toISOString(),
+    cuenta:{tienda:O.shop.name,responsable:O.shop.owner_name,telefono:O.shop.phone,alta:O.shop.created_at,condiciones:{version:O.shop.consent_version,fecha:O.shop.consent_at},novedades:O.shop.news},
+    torneos:ts.map(t=>({nombre:t.name,juego:t.game,fecha:t.day,estado:t.status,
+      jugadores:ps.filter(p=>p.tournament_id===t.id).map(p=>p.name),
+      mesas:ms.filter(m=>m.tournament_id===t.id).map(m=>({ronda:m.round,mesa:m.table_no,a:nm(m.a),b:nm(m.b),resultado:m.result}))}))};
+  copyText(JSON.stringify(out,null,2),'Tus datos se han copiado. Pégalos donde quieras guardarlos.');
+}
+async function ownerClick(t){
+  if(t.id==='goHome'){if(O.chan){sb.removeChannel(O.chan);O.chan=null}store.del('mam-ultimo');O.screen='home';O.t=null;O.tours=await q(sb.from('tournaments').select('*').order('created_at',{ascending:false})).catch(()=>O.tours);return renderOwner()}
+  if(t.id==='acctBtn'){O.acct=!O.acct;O.acctMode=null;return renderOwner()}
+  if(t.dataset.acct){const a=t.dataset.acct;
+    if(a==='logout'){if(O.chan)sb.removeChannel(O.chan);O.chan=null;store.del('mam-ultimo');await sb.auth.signOut();O.screen=null;O.acct=false;toast('Sesión cerrada');return authScreen('login')}
+    if(a==='export')return act(exportData,t,'Copiando…');
+    if(a==='close'){O.acctMode=null;O.pendingCode=null;return renderOwner()}
+    if(a==='code')return act(async()=>{const nc=newCode();await q(sb.rpc('set_recovery_code',{p_code:nc}));O.pendingCode=nc;O.acctMode='code';renderOwner()},t);
+    O.acctMode=O.acctMode===a?null:a;return renderOwner()}
+  if(t.id==='newT'){O.newT=true;renderOwner();const n=$('#nfName');n&&n.focus();return}
+  if(t.id==='nfX'){O.newT=false;return renderOwner()}
+  if(t.dataset.open)return openTour(t.dataset.open);
+  if(t.dataset.v){O.view=t.dataset.v;return renderOwner()}
+  if(t.id==='linkBtn'){O.link=!O.link;O.linkConfirm=false;return renderOwner()}
+  if(t.id==='closeLink'){O.link=false;return renderOwner()}
+  if(t.id==='copyLink')return copyText(tourUrl(),'Enlace copiado');
+  if(t.id==='shareLink'){try{await navigator.share({title:O.t.name,text:`Torneo ${O.t.name}: abre el enlace, elige tu nombre y anota tus partidas.`,url:tourUrl()})}catch(e){}return}
+  if(t.id==='rotate'){O.linkConfirm=true;return renderOwner()}
+  if(t.id==='rotateGo')return act(async()=>{const tok=hex(16);await q(sb.from('tournaments').update({token:tok}).eq('id',O.t.id));O.t.token=tok;O.linkConfirm=false;renderOwner();toast('Enlace cambiado. Da el nuevo a los jugadores')},t);
+  if(t.dataset.del)return act(async()=>{await q(sb.from('players').delete().eq('id',t.dataset.del));await loadTour();renderOwner()});
+  if(t.dataset.out)return act(async()=>{const p=O.players.find(x=>x.id===t.dataset.out);await q(sb.from('players').update({out:!p.out}).eq('id',p.id));p.out=!p.out;renderOwner()});
+  if(t.dataset.release)return act(async()=>{await q(sb.from('players').update({claim_hash:null}).eq('id',t.dataset.release));await loadTour();renderOwner();toast('Nombre liberado. El jugador puede volver a elegirlo')});
+  if(t.id==='startB')return act(async()=>{
+    const planned=plannedFor(O.players.length);
+    await pairAndInsert();
+    await q(sb.from('tournaments').update({status:'running',planned}).eq('id',O.t.id));Object.assign(O.t,{status:'running',planned});
+    O.view='ron';renderOwner();toast('Ronda 1 emparejada. Los jugadores ya ven su mesa');window.scrollTo(0,0)},t,'Emparejando…');
+  if(t.dataset.r){O.viewRound=+t.dataset.r;return renderOwner()}
+  if(t.dataset.m)return act(()=>setResult(t.dataset.m,t.dataset.k));
+  if(t.dataset.accept)return act(()=>setResult(t.dataset.accept,t.dataset.k));
+  if(t.id==='nextB')return act(async()=>{await pairAndInsert();renderOwner();toast('Ronda '+curRound(O.matches)+' emparejada');window.scrollTo(0,0)},t,'Emparejando…');
+  if(t.id==='finB')return act(async()=>{await q(sb.from('tournaments').update({status:'done'}).eq('id',O.t.id));O.t.status='done';O.view='cla';O.link=false;renderOwner()},t);
+  if(t.id==='copyB')return copyText(standingsText(O.t.name,O.t.game,O.players,O.matches),'Clasificación copiada');
+  if(t.id==='delT'){O.delT=true;return renderOwner()}
+  if(t.id==='delTX'){O.delT=false;return renderOwner()}
+  if(t.id==='delTGo')return act(async()=>{await q(sb.from('tournaments').delete().eq('id',O.t.id));if(O.chan){sb.removeChannel(O.chan);O.chan=null}
+    store.del('mam-ultimo');O.tours=O.tours.filter(x=>x.id!==O.t.id);O.t=null;O.screen='home';O.delT=false;renderOwner();toast('Torneo borrado')},t,'Borrando…');
+  if(t.id==='retry')return ownerStart();
+}
+async function ownerSubmit(f){
+  const btn=f.querySelector('button[type=submit]');
+  if(f.id==='fLogin')return doLogin(btn);
+  if(f.id==='fSignup')return doSignup(btn);
+  if(f.id==='fRecover')return doRecover(btn);
+  if(f.id==='fNewT'){
+    const name=val('nfName').trim(),game=val('nfGame').trim()||'Juego de cartas',day=val('nfDate')||new Date().toISOString().slice(0,10);
+    const e=$('#nfErr');if(!name||/[<>]/.test(name+game)){e.textContent='Escribe un nombre para el torneo (sin los signos < ni >).';e.hidden=false;return}
+    return act(async()=>{const row=await q(sb.from('tournaments').insert({shop_id:O.uid,name,game,day}).select().single());O.tours.unshift(row);O.newT=false;await openTour(row.id);toast('Torneo creado. Apunta a los jugadores')},btn,'Creando…');
+  }
+  if(f.id==='fAdd'){const n=val('pName').trim();if(!n)return;if(/[<>]/.test(n))return toast('El nombre no puede llevar los signos < ni >.');
+    return act(async()=>{await q(sb.from('players').insert({tournament_id:O.t.id,name:n}));const pi=$('#pName');if(pi)pi.value='';await loadTour();renderOwner();const i=$('#pName');i&&i.focus()},btn,'…')}
+  if(f.id==='fPin'){
+    const p0=val('cPin0'),p1=val('cPin1'),p2=val('cPin2'),ce=$('#cErr'),err=m=>{ce.textContent=m;ce.hidden=false};
+    if(!/^\d{4}$/.test(p1)||weakPin(p1))return err('Elige un PIN de 4 cifras que no sea fácil de adivinar.');
+    if(p1!==p2)return err('Los dos PIN nuevos no coinciden.');
+    return act(async()=>{const ph=O.shop.phone;
+      const {error}=await sb.auth.signInWithPassword({email:mailOf(ph),password:passOf(ph,p0)});if(error){busy(btn,false);return err('El PIN actual no es correcto.')}
+      await q(sb.auth.updateUser({password:passOf(ph,p1)}));O.acctMode=null;renderOwner();toast('PIN cambiado')},btn,'Guardando…');
+  }
+  if(f.id==='fDel'){if(val('delTxt').trim().toUpperCase()!=='BORRAR')return;
+    return act(async()=>{await q(sb.rpc('delete_my_account'));if(O.chan)sb.removeChannel(O.chan);O.chan=null;store.del('mam-ultimo');await sb.auth.signOut().catch(()=>{});
+      O.screen=null;O.acct=false;O.acctMode=null;authScreen('login');toast('Cuenta borrada, con todos tus torneos y datos.')},btn,'Borrando…')}
+}
+
+/* ======================= JUGADORES (enlace del torneo) ======================= */
+const P={data:null,err:null,tab:'mi',confirm:null,timer:null,busy:false};
+function deviceKey(){let k=store.get('mam-movil',null);if(!k||!/^[a-f0-9]{32}$/.test(k)){k=hex(16);store.set('mam-movil',k)}return k}
+const myKey='mam-yo:'+TOKEN;
+async function loadPub(){
+  try{
+    const d=await q(sb.rpc('pub_tournament',{p_token:TOKEN}));
+    if(!d){P.data=null;P.err='Este enlace no es válido o ha caducado. Pide el enlace nuevo al organizador.'}
+    else{d.matches=d.matches.map(m=>({id:m.id,round:m.round,table_no:m.t,a:m.a,b:m.b,result:m.res,rep_a:m.ra,rep_b:m.rb}));P.data=d;P.err=null;
+      const me=store.get(myKey,null);if(me&&!d.players.some(p=>p.id===me&&p.claimed))store.del(myKey)}
+  }catch(e){P.err=errText(e)}
+}
+function startPolling(){clearInterval(P.timer);P.timer=setInterval(async()=>{if(document.hidden||P.busy)return;const before=JSON.stringify(P.data);await loadPub();if(JSON.stringify(P.data)!==before&&!legalBack)renderPlayer()},5000)}
+document.addEventListener('visibilitychange',async()=>{if(MODE==='player'&&!document.hidden){await loadPub();if(!legalBack)renderPlayer()}});
+const ppname=id=>((P.data&&P.data.players.find(p=>p.id===id))||{name:'—'}).name;
+function renderPlayer(){
+  if(!P.data){root().innerHTML=`<div class="hero"><div class="logo big"><i></i>Mesa a Mesa</div></div><div class="card form"><p class="err">${esc(P.err||'Cargando…')}</p><button class="primary" id="pRetry">Volver a intentarlo</button></div>${footer(['jug','priv'])}`;return}
+  const d=P.data,me=store.get(myKey,null),r=curRound(d.matches);
+  const st={setup:'Aún no ha empezado',running:`Ronda ${r} de ${d.planned}`,done:'Finalizado'}[d.status];
+  let h=`<div class="brand"><div class="logo"><i></i>Mesa a Mesa</div><span class="pill">${esc(d.shop||'')}</span></div>
+  <section class="head"><div class="chips"><span class="chip ${d.status==='running'?'live':d.status==='done'?'done':''}">${st}</span></div><h1>${esc(d.name)}</h1>
+  <div class="meta"><span>${esc(d.game)}</span><span>${esc(fday(d.day))}</span></div></section>`;
+  if(!me&&d.status!=='done'){
+    const free=d.players.filter(p=>!p.out);
+    h+=`<div class="sec"><div class="sectitle"><h2>¿Quién eres?</h2></div>
+    <p class="note">Toca tu nombre. Solo se puede elegir en un móvil, así que elige el tuyo. Si no apareces, díselo al organizador.</p>
+    ${P.confirm?`<div class="card form"><p class="note" style="font-size:17px">¿Eres <b>${esc(ppname(P.confirm))}</b>?</p><div class="row"><button class="primary" id="claimGo" style="flex:1">Sí, soy yo</button><button class="ghost" id="claimX">No</button></div></div>`:''}
+    <div class="who">${free.map(p=>`<button data-who="${p.id}" ${p.claimed?'disabled':''}>${esc(p.name)}${p.claimed?'<small>Ya elegido</small>':''}</button>`).join('')||'<p class="note">Todavía no hay jugadores apuntados.</p>'}</div>
+    <p class="note">Tus datos (nombre y resultados) los gestiona ${esc(d.shop||'la tienda')}. <button class="link" data-legal="jug">Más información</button></p></div>`;
+  }else{
+    h+=`<nav class="tabs two" role="tablist"><button role="tab" data-ptab="mi" aria-selected="${P.tab==='mi'}">Mi partida</button><button role="tab" data-ptab="cla" aria-selected="${P.tab==='cla'}">Clasificación</button></nav>`;
+    h+=P.tab==='mi'?myGame(d,me,r):`<div class="sec">${d.status==='done'?champHtml(d):''}${standingsTable(d.players,d.matches,me)}</div>`;
+  }
+  h+=footer(['jug','priv','local']);
+  root().innerHTML=h;
+}
+function champHtml(d){const s=stats(d.players,d.matches)[0];return s?`<div class="card champ"><span class="chip" style="align-self:flex-start">Campeón</span><strong>${esc(s.p.name)}</strong><span class="note">${s.pts} puntos · ${s.w}-${s.l}-${s.d}</span></div>`:''}
+function myGame(d,me,r){
+  if(d.status==='done')return `<div class="sec">${champHtml(d)}<p class="note">El torneo ha terminado. ¡Gracias por jugar!</p></div>`;
+  const s=stats(d.players,d.matches).find(x=>x.p.id===me);
+  let h=`<div class="sec"><div class="card mybox"><div class="sectitle"><span class="note">Hola, <b>${esc(ppname(me))}</b></span><span class="pill">${s?s.pts:0} pts · ${s?`${s.w}-${s.l}-${s.d}`:'0-0-0'}</span></div>`;
+  if(d.status==='setup'||!r)return h+`<div class="state wait">El torneo aún no ha empezado. Cuando el organizador empareje la ronda 1, verás aquí tu mesa.</div></div></div>`;
+  const m=d.matches.find(x=>x.round===r&&(x.a===me||x.b===me));
+  if(!m)return h+`<div class="state wait">No juegas esta ronda. Habla con el organizador si es un error.</div></div></div>`;
+  if(!m.b)return h+`<div class="tableno">Descansas</div><div class="state ok">Esta ronda no juegas. Sumas 3 puntos.</div></div></div>`;
+  const iA=m.a===me,opp=iA?m.b:m.a,myRep=iA?m.rep_a:m.rep_b,othRep=iA?m.rep_b:m.rep_a;
+  const asMine=x=>!x?null:x==='D'?'draw':((x==='A')===iA?'win':'loss');
+  const word={win:'He ganado',loss:'He perdido',draw:'Empate'};
+  h+=`<div class="tableno">Mesa ${m.table_no}</div>
+    <div class="vs"><b>${esc(ppname(me))}</b><span>vs</span><b>${esc(ppname(opp))}</b></div>`;
+  if(m.result){const res=asMine(m.result);
+    h+=`<div class="state ok">${res==='win'?'¡Has ganado!':res==='loss'?'Has perdido esta vez.':'Empate.'} Resultado anotado.</div>
+    <p class="note" style="text-align:center">Espera a que el organizador empareje la siguiente ronda.</p>`;
+  }else{
+    const mine=asMine(myRep);
+    h+=`<p class="note" style="text-align:center">Al terminar la partida, marca tu resultado:</p>
+    <div class="bigbtns">${['win','draw','loss'].map(k=>`<button data-rep="${k}" data-match="${m.id}" class="${mine===k?'on':''}">${word[k]}</button>`).join('')}</div>`;
+    if(myRep&&othRep&&myRep!==othRep)h+=`<div class="state bad">${esc(ppname(opp))} ha marcado otro resultado. Revisadlo juntos o avisad al organizador.</div>`;
+    else if(myRep)h+=`<div class="state wait">Anotado: ${word[mine]}. Falta que ${esc(ppname(opp))} lo confirme.</div>`;
+    else if(othRep)h+=`<div class="state wait">${esc(ppname(opp))} ya ha marcado su resultado. Marca el tuyo.</div>`;
+  }
+  return h+`</div><p class="note">¿Este no es tu nombre? Pide al organizador que lo libere y vuelve a elegir.</p></div>`;
+}
+async function playerClick(t){
+  if(t.id==='pRetry'){await loadPub();return renderPlayer()}
+  if(t.dataset.who){P.confirm=t.dataset.who;renderPlayer();window.scrollTo(0,0);return}
+  if(t.id==='claimX'){P.confirm=null;return renderPlayer()}
+  if(t.id==='claimGo'){if(P.busy)return;P.busy=true;busy(t,true,'Un momento…');
+    try{await q(sb.rpc('claim_player',{p_token:TOKEN,p_player:P.confirm,p_key:deviceKey()}));store.set(myKey,P.confirm);P.confirm=null;P.tab='mi';await loadPub();renderPlayer();toast('¡Listo! Aquí verás tu mesa en cada ronda')}
+    catch(e){toast(errText(e));P.confirm=null;await loadPub();renderPlayer()}finally{P.busy=false}return}
+  if(t.dataset.ptab){P.tab=t.dataset.ptab;return renderPlayer()}
+  if(t.dataset.rep){if(P.busy)return;P.busy=true;busy(t,true,'…');
+    try{const r=await q(sb.rpc('report_result',{p_token:TOKEN,p_match:t.dataset.match,p_player:store.get(myKey,null),p_key:deviceKey(),p_res:t.dataset.rep}));
+      toast(r==='confirmado'?'Resultado confirmado por los dos':r==='distinto'?'No coincide con tu rival. Revisadlo juntos':'Anotado. Falta que tu rival lo confirme')}
+    catch(e){toast(errText(e))}finally{P.busy=false;await loadPub();renderPlayer()}return}
+}
+
+/* ======================= Arranque y eventos ======================= */
+let MODE='owner';
+document.addEventListener('click',async e=>{
+  const t=e.target.closest('button');if(!t)return;
+  if(t.dataset.legal){e.preventDefault();return showLegal(t.dataset.legal)}
+  if(t.id==='legalBack')return closeLegal();
+  if(MODE==='player')return playerClick(t);
+  if(t.dataset.auth)return authScreen(t.dataset.auth);
+  if(t.id==='copyCode')return copyText(fmtCode(O.pendingCode),'Código copiado');
+  if(t.id==='codeGo'){const f=O.afterCode;O.pendingCode=null;O.afterCode=null;root().innerHTML='<div class="card loading">Cargando…</div>';return f&&f()}
+  return ownerClick(t);
+});
+document.addEventListener('change',async e=>{
+  if(e.target.id==='codeOk'){const g=$('#codeGo');if(g)g.disabled=!e.target.checked}
+  if(e.target.id==='newsChk'){const on=e.target.checked;try{await q(sb.from('shops').update({news:on}).eq('id',O.uid));O.shop.news=on;toast(on?'Recibirás novedades':'Ya no recibirás novedades')}catch(err){e.target.checked=!on;toast(errText(err))}}
+});
+document.addEventListener('input',e=>{if(e.target.id==='delTxt'){const g=$('#delGo');if(g)g.disabled=e.target.value.trim().toUpperCase()!=='BORRAR'}});
+document.addEventListener('submit',e=>{e.preventDefault();if(MODE==='owner')ownerSubmit(e.target)});
+
+(async function boot(){
+  if(!sb){root().innerHTML=`<div class="hero"><div class="logo big"><i></i>Mesa a Mesa</div></div><div class="card form"><h2 class="authh">Falta configurar la app</h2><p class="note">Este archivo todavía no tiene la dirección y la clave de Supabase. Genera el archivo desde la guía de instalación.</p></div>`;return}
+  if(TOKEN){
+    MODE='player';
+    if(!/^[a-f0-9]{32}$/.test(TOKEN)){P.err='Este enlace no es válido. Pide el enlace al organizador.';return renderPlayer()}
+    await loadPub();renderPlayer();startPolling();return;
+  }
+  await ownerStart();
+})();
+</script>
+</body>
+</html>
